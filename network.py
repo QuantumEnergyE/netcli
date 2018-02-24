@@ -15,6 +15,7 @@ from .completer import NetworkCompleter
 from .style import style_factory
 from .toolbar import create_toolbar_handler
 from .keys import get_key_manager
+from .lexer import CommandLexer
 
 
 class NetWork(object):
@@ -45,6 +46,7 @@ class NetWork(object):
     def _create_layout(self):
         self.layout = create_default_layout(
             message='network > ',
+            lexer=CommandLexer,
             get_bottom_toolbar_tokens=create_toolbar_handler(self.get_long_options, self.get_fuzzy_match)
         )
 
