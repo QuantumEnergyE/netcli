@@ -26,7 +26,6 @@ class NetWork(object):
         self.cmd = NetWorkCommands()
         self._create_cli()
 
-
     def set_fuzzy_match(self, is_fuzzy):
         self.fuzzy = is_fuzzy
         self.completer.set_fuzzy_match(is_fuzzy)
@@ -113,5 +112,3 @@ class NetWork(object):
                 click.secho(ex.message, fg='red')
             except NotImplementedError as ex:
                 click.secho(ex.message, fg='red')
-
-

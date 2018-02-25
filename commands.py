@@ -3,6 +3,8 @@ from __future__ import print_function
 import subprocess
 import platform
 import os
+from prompt_toolkit.shortcuts import get_input
+import click
 
 
 class NetMeta(type):
@@ -14,11 +16,12 @@ class NetWorkCommands(object):
     __metaclass__ = NetMeta
     # base_if_path = "/etc/sysconfig/network-scripts/"
     # route_file = '/etc/rc.local'
-    base_if_path = "./"
+    base_if_path = "./network_tool/"
     route_file = '1.txt'
     func_map = {
         'list ips': 'list_ips',
         'list routes': 'list_routes',
+        'list cards': 'list_cards',
         'get ip': 'get_ip',
         'get route': 'get_route',
         'set ip': 'set_ip',
@@ -31,13 +34,16 @@ class NetWorkCommands(object):
     def run_shell(self, cmd):
         ps = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = ps.communicate()
-        if platform.system() == 'Windows':
-            print(stdout.decode('gbk'))
-            print(stderr.decode('gbk'))
-        else:
-            print(stdout)
-            print(stderr)
         return stdout, stderr, ps.returncode
+
+    def secho(self, out, error, code, pager=False):
+        if not code:
+            if pager:
+                click.echo_via_pager(out)
+            else:
+                click.secho(out, fg='green')
+        else:
+            click.secho(error, fg='red')
 
     def parse(self, instruction):
         """
@@ -54,21 +60,53 @@ class NetWorkCommands(object):
         func()
 
     def list_ips(self):
-        pass
+        out, error, code = self.run_shell('ifconfig -a')
+        self.secho(out, error, code, pager=True)
 
     def list_routes(self):
         pass
 
-    def get_ip(self, eth=None):
-        if eth:
-            return 'ifconfig {}'.format(eth)
-        return 'ifconfig -a'
+    def list_cards(self):
+        out, error, code = self.run_shell('ls /sys/class/net/')
+        self.secho(out, error, code)
+
+    def get_ip(self):
+        eth = get_input('please input the eth name:')
+        out, error, code = self.run_shell('ifconfig {}'.format(eth))
+        self.secho(out, error, code)
 
     def get_route(self):
         pass
 
     def set_ip(self):
-        pass
+        eth = get_input('network card:')
+        mode = get_input('select the mode [dhcp(d)/static(s)]:')
+        if mode == 'static' or mode == 's':
+            ip = get_input('ip:')
+            mask = get_input('mask:')
+            gateway = get_input('gateway:')
+            click.secho('configuration information:\n'
+                        'eth:{}\n'
+                        'ip:{}\n'
+                        'mask:{}\n'
+                        'gateway:{}\n'.format(eth, ip, mask, gateway), fg='green')
+            ret = get_input('Please confirm the above information [y/n]:')
+            if ret.lower() == 'y':
+                self.set_ip_static(eth, ip, mask, gateway)
+                click.secho('successful!', fg='green')
+            else:
+                click.secho('cancel!', fg='red')
+        elif mode == 'dhcp' or mode == 'd':
+            click.secho('configuration information:\n'
+                        'eth:{}\n'.format(eth), fg='green')
+            ret = get_input('Please confirm the above information [y/n]:')
+            if ret.lower() == 'y':
+                self.set_ip_dhcp(eth)
+                click.secho('successful!', fg='green')
+            else:
+                click.secho('cancel!', fg='red')
+        else:
+            click.secho('Please select an available option!', fg='red')
 
     def set_route(self):
         pass
