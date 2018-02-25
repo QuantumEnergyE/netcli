@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 import subprocess
-import platform
 import os
 from prompt_toolkit.shortcuts import get_input
 import click
@@ -57,7 +56,7 @@ class NetWorkCommands(object):
         func = self.__getattribute__(func_name)
         if not func:
             raise NotImplementedError('not implemented!')
-        func()
+        return func
 
     def list_ips(self):
         out, error, code = self.run_shell('ifconfig -a')
@@ -138,4 +137,4 @@ class NetWorkCommands(object):
             w.write(info)
 
     def run_cmd(self, text):
-        self.parse(text)
+        self.parse(text)()

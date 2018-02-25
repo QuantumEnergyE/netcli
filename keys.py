@@ -4,6 +4,9 @@ from __future__ import print_function
 
 from prompt_toolkit.key_binding.manager import KeyBindingManager
 from prompt_toolkit.keys import Keys
+import click
+
+from .literals import help
 
 
 def get_key_manager(set_long_options, get_long_options, set_fuzzy_match, get_fuzzy_match):
@@ -19,7 +22,8 @@ def get_key_manager(set_long_options, get_long_options, set_fuzzy_match, get_fuz
 
     @manager.registry.add_binding(Keys.F2)
     def _(event):
-        event.cli.current_buffer.insert_text("help")
+        click.echo_via_pager(help())
+
 
     @manager.registry.add_binding(Keys.F3)
     def _(_):
