@@ -14,9 +14,9 @@ class NetMeta(type):
 class NetWorkCommands(object):
     __metaclass__ = NetMeta
     # base_if_path = "/etc/sysconfig/network-scripts/"
-    # route_file = '/etc/rc.local'
+    # route_file = '/etc/sysconfig/static-routes'
     base_if_path = "./network_tool/"
-    route_file = '1.txt'
+    route_file = './network_tool/route.txt'
     func_map = {
         'list ips': 'list_ips',
         'list routes': 'list_routes',
@@ -26,8 +26,8 @@ class NetWorkCommands(object):
         'set ip': 'set_ip',
         'set route': 'set_route',
         'set ns': 'set_ns',
-        'del_ip': 'del_ip',
-        'del_route': 'del_route'
+        'del ip': 'del_ip',
+        'del route': 'del_route'
     }
 
     def run_shell(self, cmd):
@@ -63,7 +63,8 @@ class NetWorkCommands(object):
         self.secho(out, error, code, pager=True)
 
     def list_routes(self):
-        pass
+        out, error, code = self.run_shell('route')
+        self.secho(out, error, code, pager=True)
 
     def list_cards(self):
         out, error, code = self.run_shell('ls /sys/class/net/')
@@ -75,7 +76,9 @@ class NetWorkCommands(object):
         self.secho(out, error, code)
 
     def get_route(self):
-        pass
+        with open(self.route_file, 'r') as r:
+            routes = r.read()
+            click.secho(routes, fg='green')
 
     def set_ip(self):
         eth = get_input('network card:')
@@ -108,7 +111,20 @@ class NetWorkCommands(object):
             click.secho('Please select an available option!', fg='red')
 
     def set_route(self):
-        pass
+        ip = get_input('net:')
+        net_mask = get_input('net_mask:')
+        gw = get_input('gateway:')
+        command = 'any net {} netmask {} gw {}\n'.format(ip, net_mask, gw)
+        # TODO: if the gw is exist, warning!
+        click.secho('configuration information:\n'
+                    '{}'.format(command))
+        ret = get_input('Please confirm the above information [y/n]:')
+        if ret.lower() == 'y':
+            with open(self.route_file, 'a') as f:
+                f.write(command)
+            click.secho('successful!', fg='green')
+        else:
+            click.secho('cancel!', fg='red')
 
     def set_ns(self):
         pass
