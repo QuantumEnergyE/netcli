@@ -8,6 +8,7 @@ from prompt_toolkit.buffer import Buffer, AcceptAction
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.filters import Always, HasFocus, IsDone
 import os
+import click
 
 from .__init__ import __version__
 from .commands import NetWorkCommands
@@ -94,8 +95,23 @@ class NetWork(object):
             application=application,
             eventloop=event_loop)
 
+    def _quit_command(self, text):
+        return (text.strip().lower() == 'exit'
+                or text.strip().lower() == 'quit'
+                or text.strip() == r'\q'
+                or text.strip() == ':q')
+
     def run_cli(self):
         print('Version:', __version__)
         while True:
             document = self.network_cli.run(reset_current_buffer=True)
-            self._process_command(document.text)
+            if self._quit_command(document.text):
+                raise EOFError
+            try:
+                self._process_command(document.text)
+            except KeyError as ex:
+                click.secho(ex.message, fg='red')
+            except NotImplementedError as ex:
+                click.secho(ex.message, fg='red')
+
+

@@ -1,0 +1,23 @@
+{
+    "keywords": {
+        "exit": [],
+        "quit": [],
+        "list": [
+            "ips",
+            "routes"
+        ],
+        "get": [
+            "ip",
+            "route"
+        ],
+        "set": [
+            "ip",
+            "route",
+            "ns"
+        ],
+        "del": [
+            "ip",
+            "route"
+        ]
+    }
+}
