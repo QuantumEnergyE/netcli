@@ -12,10 +12,11 @@
       "route"
     ],
     "set": [
-      "ip",
+      "ifcfg",
       "route",
       "ns",
-      "bond"
+      "bond",
+      "bridge"
     ],
     "del": [
       "ip",
