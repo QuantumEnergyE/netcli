@@ -13,10 +13,8 @@ class NetMeta(type):
 
 class NetWorkCommands(object):
     __metaclass__ = NetMeta
-    # base_if_path = "/etc/sysconfig/network-scripts/"
-    # route_file = '/etc/sysconfig/network-scripts/route-'
-    base_if_path = "./network_tool/"
-    route_file = './network_tool/route.txt'
+    base_if_path = "/etc/sysconfig/network-scripts/"
+    route_file = '/etc/sysconfig/network-scripts/route-'
     func_map = {
         'list ips': 'list_ips',
         'list routes': 'list_routes',
@@ -26,8 +24,10 @@ class NetWorkCommands(object):
         'set ip': 'set_ip',
         'set route': 'set_route',
         'set ns': 'set_ns',
+        'set bond': 'set_bond',
         'del ip': 'del_ip',
-        'del route': 'del_route'
+        'del route': 'del_route',
+        "restart network": 'restart_network'
     }
 
     def run_shell(self, cmd):
@@ -37,6 +37,9 @@ class NetWorkCommands(object):
 
     def secho(self, out, error, code, pager=False):
         if not code:
+            if not out:
+                click.secho('successful!', fg='green')
+                return
             if pager:
                 click.echo_via_pager(out)
             else:
@@ -63,7 +66,7 @@ class NetWorkCommands(object):
         self.secho(out, error, code, pager=True)
 
     def list_routes(self):
-        out, error, code = self.run_shell('route')
+        out, error, code = self.run_shell('ip route show')
         self.secho(out, error, code, pager=True)
 
     def list_cards(self):
@@ -76,37 +79,30 @@ class NetWorkCommands(object):
         self.secho(out, error, code)
 
     def get_route(self):
-        with open(self.route_file, 'r') as r:
+        card = get_input('card name:')
+        card_conf = self.route_file + card
+        if not os.path.exists(card_conf):
+            click.secho('can\'t find configure', fg='red')
+            return
+        with open(card_conf, 'r') as r:
             routes = r.read()
             click.secho(routes, fg='green')
 
     def set_ip(self):
         eth = get_input('network card:')
-        mode = get_input('select the mode [dhcp(d)/static(s)]:')
+        mode = get_input('select the mode [dhcp(d)/static(s)/bond(b)]:')
         if mode == 'static' or mode == 's':
             ip = get_input('ip:')
             mask = get_input('mask:')
             gateway = get_input('gateway:')
-            click.secho('configuration information:\n'
-                        'eth:{}\n'
-                        'ip:{}\n'
-                        'mask:{}\n'
-                        'gateway:{}\n'.format(eth, ip, mask, gateway), fg='green')
-            ret = get_input('Please confirm the above information [y/n]:')
-            if ret.lower() == 'y':
-                self.set_ip_static(eth, ip, mask, gateway)
-                click.secho('successful!', fg='green')
-            else:
-                click.secho('cancel!', fg='red')
+            self.set_ip_static(eth, ip, mask, gateway)
         elif mode == 'dhcp' or mode == 'd':
-            click.secho('configuration information:\n'
-                        'eth:{}\n'.format(eth), fg='green')
-            ret = get_input('Please confirm the above information [y/n]:')
-            if ret.lower() == 'y':
-                self.set_ip_dhcp(eth)
-                click.secho('successful!', fg='green')
-            else:
-                click.secho('cancel!', fg='red')
+            self.set_ip_dhcp(eth)
+            click.secho('successful!', fg='green')
+        elif mode == 'bond' or mode == 'b':
+            bond = get_input('bond name:')
+            nm_controlled = get_input('nm_controlled [yes/no]:')
+            self.set_ip_bond(eth, bond, nm_controlled)
         else:
             click.secho('Please select an available option!', fg='red')
 
@@ -117,40 +113,112 @@ class NetWorkCommands(object):
         command = '{} via {} dev {}\n'.format(net, via, dev)
         # TODO: if the gw is exist, warning!
         click.secho('configuration information:\n'
-                    '{}'.format(command))
+                    '{}'.format(command), fg='green')
         ret = get_input('Please confirm the above information [y/n]:')
         if ret.lower() == 'y':
             with open(self.route_file + dev, 'a') as f:
                 f.write(command)
-            click.secho('successful!', fg='green')
-        else:
-            click.secho('cancel!', fg='red')
+            click.secho('successful', fg='green')
 
     def set_ns(self):
         pass
+
+    def set_bond(self):
+        bond = get_input('bond device [example=>bond0]:')
+        cards, _, _ =  self.run_shell('ls /sys/class/net/')
+        mode = get_input('bond mode:')
+        miimon = get_input('bond miimon:')
+        ipaddr = get_input('ipaddr:')
+        netmask = get_input('netmask:')
+        onboot = get_input('onboot [yes/no]:')
+        mtu = get_input('mtu:')
+        nm_controlled = get_input('nm_controlled:')
+        info = 'DEVICE={}\n' \
+               'BONDING_OPTS=\'mode={} mimmon={}\'\n' \
+               'IPADDR={}\n' \
+               'NETMASK={}\n' \
+               'ONBOOT=yes\n' \
+               'MTU={}\n' \
+               'NM_CONTROLLED={}\n' \
+               'HOTPLUG={}\n'.format(bond, mode, miimon, ipaddr, netmask, onboot, mtu, nm_controlled)
+        click.secho('configuration information:\n'
+                    '{}'.format(info), fg='green')
+        ret = get_input('Please confirm the above information [y/n]:')
+        if ret.lower() == 'y':
+            bond_file = os.path.join(self.base_if_path, 'ifcfg-{}'.format(bond))
+            if os.path.exists(bond_file):
+                ret = get_input('bond conf ifcfg-{} is exist, do you want to recover it! [y/n]:'.format(bond))
+                if ret.lower() != 'y':
+                    return
+            with open(bond_file, 'w') as w:
+                w.write(info)
+            ret = get_input('do you want bind devices to {} [y/n]:'.format(bond))
+            if ret.lower() == 'y':
+                slave_devices = get_input('please select the slave devices from "{}" [example=>ens3 ens4]:'.format(';'.join(cards.split('\n'))))
+                for slave_device in slave_devices.split():
+                    self.set_ip_bond(slave_device, bond)
+            else:
+                click.secho('you can bind device to bond by execute \'set ip\'', fg='green')
 
     def del_ip(self):
         pass
 
     def del_route(self):
-        pass
+        net = get_input('net:')
+        command = 'ip route show | grep {}'.format(net)
+        out, error, code = self.run_shell(command)
+        if not code and out:
+            ret = get_input('route "{}" will be deleted! [y/n]:'.format(out.strip()))
+            if ret.lower() == 'y':
+                dev = out.split()[-1]
+                route_file = os.path.join(self.route_file + dev)
+                if not os.path.exists(route_file):
+                    click.secho('route file can\'t find!')
+                else:
+                    command = 'sed -i \'/^{}/d\' {}'.format(net.replace('/', '\/'), route_file)
+                    out, error, code = self.run_shell(command)
+                    self.secho(out, error, code)
+        else:
+            click.secho('can\'t find route with this route', fg='red')
 
     def set_ip_static(self, eth, ip, mask, gateway):
         info = 'DEVICE={}\n' \
                'BOOTPROTO=static\n' \
-               'ONBOOT=YES\n' \
+               'ONBOOT=yes\n' \
                'IPADDR={}\n' \
                'NETMASK={}\n' \
                'GATEWAY={}\n'.format(eth, ip, mask, gateway)
-        with open(os.path.join(self.base_if_path, 'ifcfg-{}'.format(eth)), 'w') as w:
-            w.write(info)
+        self.update_ifcfg(eth, info)
 
     def set_ip_dhcp(self, eth):
         info = 'DEVICE={}\n' \
                'BOOTPROTO=DHCP\n' \
-               'ONBOOT=YES'.format(eth)
-        with open(os.path.join(self.base_if_path, 'ifcfg-{}'.format(eth)), 'w') as w:
-            w.write(info)
+               'ONBOOT=yes'.format(eth)
+        self.update_ifcfg(eth, info)
+
+    def set_ip_bond(self, slave, bond, nm_controlled='no'):
+        info = 'MASTER={}\n' \
+               'DEVICE={}\n' \
+               'ONBOOT=yes\n' \
+               'SLAVE=yes\n' \
+               'NM_CONTROLLED={}\n'.format(bond, slave, nm_controlled)
+        self.update_ifcfg(slave, info)
+
+    def update_ifcfg(self, device, info):
+        click.secho('configuration information:\n {}'.format(info), fg='green')
+        ret = get_input('Please confirm the above information [y/n]:')
+        if ret.lower() == 'y':
+            with open(os.path.join(self.base_if_path, 'ifcfg-{}'.format(device)), 'w') as w:
+                w.write(info)
+            click.secho('successful!', fg='green')
+        else:
+            click.secho('cancel!', fg='green')
+
+    def restart_network(self):
+        ret = get_input('The network service will be restarted! [y/n]:')
+        if ret.lower() == 'y':
+            out, error, code = self.run_shell('systemctl restart network')
+            self.secho(out, error, code)
 
     def run_cmd(self, text):
         self.parse(text)()
