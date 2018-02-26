@@ -14,7 +14,7 @@ class NetMeta(type):
 class NetWorkCommands(object):
     __metaclass__ = NetMeta
     # base_if_path = "/etc/sysconfig/network-scripts/"
-    # route_file = '/etc/sysconfig/static-routes'
+    # route_file = '/etc/sysconfig/network-scripts/route-'
     base_if_path = "./network_tool/"
     route_file = './network_tool/route.txt'
     func_map = {
@@ -111,16 +111,16 @@ class NetWorkCommands(object):
             click.secho('Please select an available option!', fg='red')
 
     def set_route(self):
-        ip = get_input('net:')
-        net_mask = get_input('net_mask:')
-        gw = get_input('gateway:')
-        command = 'any net {} netmask {} gw {}\n'.format(ip, net_mask, gw)
+        net = get_input('net:')
+        via = get_input('via:')
+        dev = get_input('dev:')
+        command = '{} via {} dev {}\n'.format(net, via, dev)
         # TODO: if the gw is exist, warning!
         click.secho('configuration information:\n'
                     '{}'.format(command))
         ret = get_input('Please confirm the above information [y/n]:')
         if ret.lower() == 'y':
-            with open(self.route_file, 'a') as f:
+            with open(self.route_file + dev, 'a') as f:
                 f.write(command)
             click.secho('successful!', fg='green')
         else:
