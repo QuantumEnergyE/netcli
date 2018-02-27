@@ -3,23 +3,23 @@
     "exit": [],
     "quit": [],
     "list": [
-      "ips",
+      "ifs",
       "routes",
       "cards"
     ],
     "get": [
-      "ip",
+      "if",
       "route"
     ],
     "set": [
-      "ifcfg",
+      "if",
       "route",
       "ns",
       "bond",
       "bridge"
     ],
     "del": [
-      "ip",
+      "if",
       "route"
     ],
     "restart": [
