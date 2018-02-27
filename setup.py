@@ -4,7 +4,7 @@ from setuptools import setup
 setup(
     name='blog_quantum',
     version='1.0',
-    packages=['blog'],
+    packages=['netcli'],
     include_package_data=True,
     install_requires=[
         'pygments>=2.0.2',
