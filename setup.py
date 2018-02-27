@@ -2,7 +2,7 @@
 from setuptools import setup
 
 setup(
-    name='blog_quantum',
+    name='netcli',
     version='1.0',
     packages=['netcli'],
     include_package_data=True,
